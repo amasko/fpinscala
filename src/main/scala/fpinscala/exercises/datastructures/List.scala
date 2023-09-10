@@ -36,10 +36,13 @@ object List: // `List` companion object. Contains functions for creating and wor
       case Nil => a2
       case Cons(h,t) => Cons(h, append(t, a2))
 
-  def foldRight[A,B](as: List[A], acc: B, f: (A, B) => B): B = // Utility functions
-    as match
-      case Nil => acc
-      case Cons(x, xs) => f(x, foldRight(xs, acc, f))
+//  def foldRight[A,B](as: List[A], acc: B, f: (A, B) => B): B = // Utility functions
+//    as match
+//      case Nil => acc
+//      case Cons(x, xs) => f(x, foldRight(xs, acc, f))
+
+  def foldRight[A, B](as: List[A], acc: B, f: (A, B) => B): B =
+    foldLeft(reverse(as), acc, (acc1, x: A) => f(x, acc1))
 
   def sumViaFoldRight(ns: List[Int]): Int =
     foldRight(ns, 0, (x,y) => x + y)
@@ -47,46 +50,108 @@ object List: // `List` companion object. Contains functions for creating and wor
   def productViaFoldRight(ns: List[Double]): Double =
     foldRight(ns, 1.0, _ * _) // `_ * _` is more concise notation for `(x,y) => x * y`; see sidebar
 
-  def tail[A](l: List[A]): List[A] = ???
+  def tail[A](l: List[A]): List[A] = l match
+    case Nil => sys.error("tail of an empty list")
+    case Cons(x, xs) => xs
 
-  def setHead[A](l: List[A], h: A): List[A] = ???
+  def setHead[A](l: List[A], h: A): List[A] =
+    l match
+      case Nil => sys.error("there is not head of an empty list")
+      case Cons(_, tl) => Cons(h, tl)
 
-  def drop[A](l: List[A], n: Int): List[A] = ???
+  def drop[A](l: List[A], n: Int): List[A] = {
+    @scala.annotation.tailrec
+    def loop(left: List[A], i: Int): List[A] =
+      left match
+        case Nil => Nil
+        case other => if i == n then left else loop(tail(other), i + 1)
 
-  def dropWhile[A](l: List[A], f: A => Boolean): List[A] = ???
+    if n < 0 then l else loop(l, 0)
+  }
 
-  def init[A](l: List[A]): List[A] = ???
+  @scala.annotation.tailrec
+  def dropWhile[A](l: List[A], f: A => Boolean): List[A] =
+    l match
+      case a @ Cons(hd, tl) => if f(hd) then dropWhile(tl, f) else a
+      case other => other
 
-  def length[A](l: List[A]): Int = ???
+//  def init[A](l: List[A]): List[A] =
+//    @scala.annotation.tailrec
+//    def loop(accu: List[A], leftover: List[A]): List[A] =
+//      leftover match
+//        case Nil => sys.error("init of an empty list")
+//        case Cons(hd, Nil) => accu
+//        case Cons(hd, tl) => loop(append(accu, Cons(hd, Nil)), tail(leftover))
+//    loop(Nil, l)
 
-  def foldLeft[A,B](l: List[A], acc: B, f: (B, A) => B): B = ???
+  def init[A](l: List[A]): List[A] =
+    l match
+      case Nil => sys.error("init of an empty list")
+      case Cons(h, Nil) => Nil
+      case Cons(h, tl) => Cons(h, init(tl))
 
-  def sumViaFoldLeft(ns: List[Int]): Int = ???
+  def length[A](l: List[A]): Int = foldRight(l, 0, (_, b) => b + 1)
 
-  def productViaFoldLeft(ns: List[Double]): Double = ???
+  @scala.annotation.tailrec
+  def foldLeft[A,B](l: List[A], acc: B, f: (B, A) => B): B =
+    l match
+      case Nil => acc
+      case Cons(h, tl) => foldLeft(tl, f(acc, h), f)
 
-  def lengthViaFoldLeft[A](l: List[A]): Int = ???
+  def sumViaFoldLeft(ns: List[Int]): Int = foldLeft(ns, 0, _ + _)
 
-  def reverse[A](l: List[A]): List[A] = ???
+  def productViaFoldLeft(ns: List[Double]): Double = foldLeft[Double, Double](ns, 1.0, _ * _)
 
-  def appendViaFoldRight[A](l: List[A], r: List[A]): List[A] = ???
+  def lengthViaFoldLeft[A](l: List[A]): Int = foldLeft(l, 0, (b, _) => b + 1)
 
-  def concat[A](l: List[List[A]]): List[A] = ???
+  def reverse[A](l: List[A]): List[A] = foldLeft(l, Nil: List[A], (acc, hd) => Cons(hd, acc))
 
-  def incrementEach(l: List[Int]): List[Int] = ???
+  def appendViaFoldRight[A](l: List[A], r: List[A]): List[A] =
+    foldRight(l, r, (x, acc) => Cons(x, acc))
 
-  def doubleToString(l: List[Double]): List[String] = ???
+  def concat[A](l: List[List[A]]): List[A] = foldLeft(l, Nil: List[A], (acc, list) => appendViaFoldRight(acc, list))
 
-  def map[A,B](l: List[A], f: A => B): List[B] = ???
+  def incrementEach(l: List[Int]): List[Int] = foldRight(l, Nil: List[Int], (x, acc) => Cons(x + 1, acc))
 
-  def filter[A](as: List[A], f: A => Boolean): List[A] = ???
+  def doubleToString(l: List[Double]): List[String] = foldRight(l, Nil: List[String], (x, acc) => Cons(x.toString, acc))
 
-  def flatMap[A,B](as: List[A], f: A => List[B]): List[B] = ???
+  def map[A,B](l: List[A], f: A => B): List[B] = foldRight[A, List[B]](l, Nil: List[B], (x, acc) => Cons(f(x), acc))
 
-  def filterViaFlatMap[A](as: List[A], f: A => Boolean): List[A] = ???
+  def filter[A](as: List[A], f: A => Boolean): List[A] = foldRight[A, List[A]](as, Nil: List[A], (x, acc) =>
+      if f(x) then Cons(x, acc) else acc
+    )
 
-  def addPairwise(a: List[Int], b: List[Int]): List[Int] = ???
+  def flatMap[A,B](as: List[A], f: A => List[B]): List[B] = concat(map(as, f))
 
-  // def zipWith - TODO determine signature
+  def filterViaFlatMap[A](as: List[A], f: A => Boolean): List[A] = flatMap(as, x =>
+      if f(x) then Cons(x, Nil) else Nil: List[A]
+    )
 
-  def hasSubsequence[A](sup: List[A], sub: List[A]): Boolean = ???
+  def addPairwise(a: List[Int], b: List[Int]): List[Int] =
+    (a, b) match
+      case (Cons(h1, tl1), Cons(h2, tl2)) => Cons(h1 + h2, addPairwise(tl1, tl2))
+//      case (Cons(h1, tl1), Nil) => Cons(h1, addPairwise(tl1, Nil))
+      case (_, Nil) => Nil
+//      case (Nil, Cons(h2, tl2)) => Cons(h2, addPairwise(Nil, tl2))
+      case (Nil, _) => Nil
+
+  def zipWith[A, B](a: List[A], b: List[A])(op: (A, A) => B): List[B] =
+     (a, b) match
+       case (Cons(h1, tl1), Cons(h2, tl2)) => Cons(op(h1,h2), zipWith(tl1, tl2)(op))
+       case (_, Nil) => Nil
+       case (Nil, _) => Nil
+
+  def hasSubsequence[A](sup: List[A], sub: List[A]): Boolean =
+    @scala.annotation.tailrec
+    def loop(sup1: List[A], sub1: List[A]): Boolean =
+      (sup1, sub1) match
+        case (_, Nil) => true
+        case (Cons(a, tl1), Cons(b, tl2)) if a == b => loop(tl1, tl2)
+        case (_, _) => false
+
+    sub match
+      case Cons(h, tl) => dropWhile(sup, x => x != h) match
+        case Nil => false
+        case nonempty => loop(nonempty, sub)
+      case _ => true
+
